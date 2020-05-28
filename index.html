@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Benoit STEPHANT, Camille SAMSON and Nicolas ANTOINE" />
+  <title>The FDP protocol</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+  </style>
+  <link rel="stylesheet" href="style.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">The FDP protocol</h1>
+<p class="author">Benoit STEPHANT, Camille SAMSON and Nicolas ANTOINE</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#communication">Communication</a>
+<ul>
+<li><a href="#teams-channels-threads">Teams, channels, threads…</a></li>
+<li><a href="#direct-messages">Direct messages</a></li>
+</ul></li>
+<li><a href="#client-commands">Client commands</a>
+<ul>
+<li><a href="#features">Features</a></li>
+<li><a href="#create">Create</a></li>
+<li><a href="#list">List</a></li>
+<li><a href="#info">Info</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="introduction">Introduction</h1>
+<p>The FDP protocol allows clients to connect to a central server and communicate in different ways that will be explained in the next sections. It is meant to be used with a terminal client that we’ll call “<em>client</em>”.</p>
+<p>The following figure is a diagram representing a typical FDP session where multiple clients are connected to a single and central server. Every communication goes through the server.</p>
+<pre><code>                                 +----------+  
+                                 |          |  
+                                 | Client 1 |  
+                                 |          |  
+                                 +--+-------+  
++----------+                        ^          
+|          |                        |          
+| Client 3 |        +--------+&lt;-----+          
+|          +&lt;------&gt;+        |                 
++----------+        | Server |                 
+                    |        +&lt;---&gt;+----------+
+                    +--------+     |          |
+                                   | Client 2 |
+                                   |          |
+                                   +----------+</code></pre>
+<p>Connections are bidirectional and whenever a message is sent, the server relays it to every other client given that that user is one of the recipients of said message (through teams, channels, and DMs).</p>
+<h1 id="communication">Communication</h1>
+<h2 id="teams-channels-threads">Teams, channels, threads…</h2>
+<p>An FDP server has to have the ability to host multiple <em>teams</em>, and every team itself can have multiple <em>channels</em>. Users can then create a <em>thread</em> in a channel and other users can respond, or <em>comment</em> that thread. Here is a diagram to help you understand the hierarchy of an FDP server.</p>
+<pre><code>+---------------------------------------------------------------------+
+|Team 1                                                               |
+| +-------------------------------+ +-------------------------------+ |
+| |Channel 1                      | |Channel 2                      | |
+| | +------------+ +------------+ | | +------------+ +------------+ | |
+| | | Thread 1   | | Thread 2   | | | | Thread 1   | | Thread 2   | | |
+| | +------------+ +------------+ | | +------------+ +------------+ | |
+| | +------------| +------------| | | +------------| +------------| | |
+| | |Comment to || |Comment to || | | |Comment to || |Comment to || | |
+| | |Thread 1   || |Thread 2   || | | |Thread 1   || |Thread 2   || | |
+| | |           || |           || | | |           || |           || | |
+| | |Other      || |Other      || | | |Other      || |Other      || | |
+| | |comment to || |comment to || | | |comment to || |comment to || | |
+| | |Thread 1   || |Thread 2   || | | |Thread 1   || |Thread 2   || | |
+| | |...        || |...        || | | |...        || |...        || | |
+| | +------------V +------------V | | +------------V +------------V | |
+| +-------------------------------+ +-------------------------------+ |
++---------------------------------------------------------------------+</code></pre>
+<h2 id="direct-messages">Direct messages</h2>
+<p>Any user can send a message to any other connected user with the <code>/send</code> command, which we’ll see in more detail in <a href="#client-commands">Client commands</a>.</p>
+<h1 id="client-commands">Client commands</h1>
+<h2 id="features">Features</h2>
+<p>An FDP client has to implement the following features in order to be fully compatible with an FDP server. Please note that all arguments to commands have to be surrounded by double quotes, a missing double quote will be interpreted as an error:</p>
+<!-- <code class="suc">20</code> -->
+<!-- <code class="err">40</code> -->
+<!-- <code class="na">n/a</code> -->
+<table>
+<colgroup>
+<col style="width: 31%" />
+<col style="width: 36%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Command</th>
+<th>Description</th>
+<th style="text-align: center;">Success</th>
+<th style="text-align: center;">Error</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>/help</code></td>
+<td>Shows help</td>
+<td style="text-align: center;"><code class="na">n/a</code> (handled client-side)</td>
+<td style="text-align: center;"><code class="na">n/a</code> (handled client-side)</td>
+</tr>
+<tr class="even">
+<td><code>/login "&lt;username&gt;"</code></td>
+<td>Sets the username used by the client, the name can be 32 characters long at most</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">41</code> if another user already has the same name</td>
+</tr>
+<tr class="odd">
+<td><code>/logout</code></td>
+<td>Disconnects the client from the server</td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+<tr class="even">
+<td><code>/users</code></td>
+<td>Lists all users on the domain (even those that are not connected at the moment)</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+<tr class="odd">
+<td><code>/user "&lt;user_uuid&gt;"</code></td>
+<td>Displays information on a given user_uuid such as their username, etc…</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">40</code> if that user does not exist</td>
+</tr>
+<tr class="even">
+<td><code>/send "&lt;user_uuid&gt;" "&lt;message_body&gt;"</code></td>
+<td>Sends a private message to a given user</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">40</code> if that user does not exist</td>
+</tr>
+<tr class="odd">
+<td><code>/messages "&lt;user_uuid&gt;"</code></td>
+<td>Lists all messages sent to and received from a given user</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">40</code> if that user does not exist</td>
+</tr>
+<tr class="even">
+<td><code>/subscribe "&lt;team_uuid&gt;"</code></td>
+<td>Subscribes to all events in a team and all of its subdirectories</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">40</code> if that team does not exist</td>
+</tr>
+<tr class="odd">
+<td><code>/subscribed</code></td>
+<td>Lists all subscribed teams</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">41</code> if not logged in</td>
+</tr>
+<tr class="even">
+<td><code>/subscribed "&lt;team_uuid&gt;"</code></td>
+<td>Lists all users subscribed to a given team</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">40</code> if that team does not exist</td>
+</tr>
+<tr class="odd">
+<td><code>/use</code></td>
+<td>Drops all contexts</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+<tr class="even">
+<td><code>/use "&lt;team_uuid&gt;"</code></td>
+<td>Specify a team context</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">40</code> if that team does not exist</td>
+</tr>
+<tr class="odd">
+<td><code>/use "&lt;channel_uuid&gt;"</code></td>
+<td>Specify a channel context</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">40</code> if that channel does not exist</td>
+</tr>
+<tr class="even">
+<td><code>/use "&lt;thread_uuid&gt;"</code></td>
+<td>Specify a thread context</td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">40</code> if that thread does not exist</td>
+</tr>
+</tbody>
+</table>
+<h2 id="create">Create</h2>
+<table>
+<colgroup>
+<col style="width: 36%" />
+<col style="width: 18%" />
+<col style="width: 21%" />
+<col style="width: 11%" />
+<col style="width: 13%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Command</th>
+<th>Description</th>
+<th>Notes</th>
+<th style="text-align: center;">Success</th>
+<th style="text-align: center;">Error</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>/create "&lt;team_name&gt;" "&lt;team_description&gt;"</code></td>
+<td>Creates a new team</td>
+<td>When no context has been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">42</code> if the team already exists</td>
+</tr>
+<tr class="even">
+<td><code>/create "&lt;channel_name&gt;" "&lt;channel_description&gt;"</code></td>
+<td>Creates a new channel</td>
+<td>When team_uuid has been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">42</code> if the channel already exists</td>
+</tr>
+<tr class="odd">
+<td><code>/create "&lt;thread_title&gt;" "&lt;thread_message&gt;"</code></td>
+<td>Creates a new thread</td>
+<td>When team_uuid and channel_uuid have been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="err">42</code> if the thread already exists</td>
+</tr>
+<tr class="even">
+<td><code>/create "&lt;comment_body&gt;"</code></td>
+<td>Creates a new comment to the currenly selected thread</td>
+<td>When team_uuid, channel_uuid and thread_uuid have been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="list">List</h2>
+<table>
+<colgroup>
+<col style="width: 36%" />
+<col style="width: 18%" />
+<col style="width: 21%" />
+<col style="width: 11%" />
+<col style="width: 13%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Command</th>
+<th>Description</th>
+<th>Notes</th>
+<th style="text-align: center;">Success</th>
+<th style="text-align: center;">Error</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>/list</code></td>
+<td>Lists all existing teams</td>
+<td>When no context has been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+<tr class="even">
+<td><code>/list</code></td>
+<td>Lists all existing channels</td>
+<td>When team_uuid has been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+<tr class="odd">
+<td><code>/list</code></td>
+<td>Lists all existing threads</td>
+<td>When team_uuid and channel_uuid have been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+<tr class="even">
+<td><code>/list</code></td>
+<td>Lists all existing comments</td>
+<td>When team_uuid, channel_uuid and thread_uuid have been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="info">Info</h2>
+<table>
+<colgroup>
+<col style="width: 36%" />
+<col style="width: 18%" />
+<col style="width: 21%" />
+<col style="width: 11%" />
+<col style="width: 13%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Command</th>
+<th>Description</th>
+<th>Notes</th>
+<th style="text-align: center;">Success</th>
+<th style="text-align: center;">Error</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>/info</code></td>
+<td>Displays currently logged users’ infos</td>
+<td>When no context has been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+<tr class="even">
+<td><code>/info</code></td>
+<td>Displays users’ info in the current team</td>
+<td>When team_uuid has been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+<tr class="odd">
+<td><code>/info</code></td>
+<td>Displays users’ info in the current channel</td>
+<td>When team_uuid and channel_uuid have been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+<tr class="even">
+<td><code>/info</code></td>
+<td>Displays users’ info in the current thread</td>
+<td>When team_uuid, channel_uuid and thread_uuid have been defined prior with <code>/use</code></td>
+<td style="text-align: center;"><code class="suc">20</code></td>
+<td style="text-align: center;"><code class="na">n/a</code> (cannot fail)</td>
+</tr>
+</tbody>
+</table>
+<!-- # Return codes
+## Return codes by function groups
+## Specific return codes -->
+</body>
+</html>
